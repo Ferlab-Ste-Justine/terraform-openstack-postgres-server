@@ -28,7 +28,7 @@ This module takes the following variables as input:
   - **server_certificate**: Server tls certificate used for both postgres and the patroni api.
   - **server_key**: Private server key used for both postgres and the patroni api.
 - **etcd**: Patroni etcd backend configuration. Note that the etcd server needs to have the grpc gateway enabled with username/password authentication. It has the following keys:
-  - **hosts**: List of etcd hosts, each entry having the ```<ip>:<port>``` format.
+  - **endpoints**: List of etcd hosts, each entry having the ```<ip>:<port>``` format.
   - **ca_cert**: Ca certificate for the etcd servers
   - **username**: User of the etcd user that patroni will use to connect to etcd.
   - **password**: Password of the etcd user that patroni will use to connect to etcd.
@@ -44,7 +44,7 @@ This module takes the following variables as input:
   - **watchdog_safety_margin**: Safety margin before leader lock ttl expire where watchdown will force master shutdown to prevent split brain. See documentation for usager: https://patroni.readthedocs.io/en/latest/watchdog.html
   - **synchronous_node_count**: Number of additional nodes a transaction commit should be writen to in addition to the master to report a success.
   - **client_certificate**: Client certificate signed with the postgres CA that patroni will use to authentify itself to patroni endpoints of the cluster.
-  - **client_certificate**: Client key used to sign the certificate
+  - **client_key**: Client key used to sign the certificate
 - **chrony**: Optional chrony configuration for when you need a more fine-grained ntp setup on your vm. It is an object with the following fields:
   - **enabled**: If set the false (the default), chrony will not be installed and the vm ntp settings will be left to default.
   - **servers**: List of ntp servers to sync from with each entry containing two properties, **url** and **options** (see: https://chrony.tuxfamily.org/doc/4.2/chrony.conf.html#server)
