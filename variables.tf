@@ -21,6 +21,12 @@ variable "image_source" {
   })
 }
 
+variable "data_volume_id" {
+  description = "Id for an optional separate disk volume to attach to the vm on postgres' data path"
+  type        = string
+  default     = ""
+}
+
 variable "flavor_id" {
   description = "ID of the VM flavor"
   type = string
