@@ -20,7 +20,7 @@ locals {
 }
 
 module "postgres_configs" {
-  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//postgres?ref=v0.14.0"
+  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//postgres?ref=v0.29.0"
   install_dependencies = var.install_dependencies
   advertise_ip = var.network_port.all_fixed_ips.0
   etcd = var.etcd
@@ -42,7 +42,9 @@ module "postgres_configs" {
     master_start_timeout   = var.patroni.master_start_timeout
     master_stop_timeout    = var.patroni.master_stop_timeout
     watchdog_safety_margin = var.patroni.watchdog_safety_margin
-    synchronous_node_count = var.patroni.synchronous_node_count
+    is_synchronous         = var.patroni.is_synchronous
+    synchronous_settings   = var.patroni.synchronous_settings
+    asynchronous_settings  = var.patroni.asynchronous_settings
     api                    = {
       ca_cert       = var.postgres.ca_certificate
       server_cert   = "${var.postgres.server_certificate}\n${var.postgres.ca_certificate}"
@@ -50,16 +52,17 @@ module "postgres_configs" {
       client_cert   = var.patroni.client_certificate
       client_key    = var.patroni.client_key
     }
-  }    
+  }
+  patroni_version = "4.0.4"
 }
 
 module "prometheus_node_exporter_configs" {
-  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//prometheus-node-exporter?ref=v0.14.0"
+  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//prometheus-node-exporter?ref=v0.29.0"
   install_dependencies = var.install_dependencies
 }
 
 module "chrony_configs" {
-  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//chrony?ref=v0.14.0"
+  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//chrony?ref=v0.29.0"
   install_dependencies = var.install_dependencies
   chrony = {
     servers  = var.chrony.servers
@@ -69,7 +72,7 @@ module "chrony_configs" {
 }
 
 module "fluentbit_updater_etcd_configs" {
-  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//configurations-auto-updater?ref=v0.14.0"
+  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//configurations-auto-updater?ref=v0.29.0"
   install_dependencies = var.install_dependencies
   filesystem = {
     path = "/etc/fluent-bit-customization/dynamic-config"
@@ -100,10 +103,16 @@ module "fluentbit_updater_etcd_configs" {
     service = "fluent-bit-config-updater"
   }
   user = "fluentbit"
+  vault_agent = {
+    etcd_auth = {
+        enabled = var.fluentbit_dynamic_config.etcd.vault_agent_secret_path != ""
+        secret_path = var.fluentbit_dynamic_config.etcd.vault_agent_secret_path
+    }
+  }
 }
 
 module "fluentbit_updater_git_configs" {
-  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//gitsync?ref=v0.14.0"
+  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//gitsync?ref=v0.29.0"
   install_dependencies = var.install_dependencies
   filesystem = {
     path = "/etc/fluent-bit-customization/dynamic-config"
@@ -123,7 +132,7 @@ module "fluentbit_updater_git_configs" {
 }
 
 module "fluentbit_configs" {
-  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//fluent-bit?ref=v0.14.0"
+  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//fluent-bit?ref=v0.29.0"
   install_dependencies = var.install_dependencies
   fluentbit = {
     metrics = var.fluentbit.metrics
@@ -145,8 +154,19 @@ module "fluentbit_configs" {
   }
 }
 
+module "vault_agent_configs" {
+  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//vault-agent?ref=v0.29.0"
+  install_dependencies = var.install_dependencies
+  vault_agent = {
+    auth_method = var.vault_agent.auth_method
+    vault_address = var.vault_agent.vault_address
+    vault_ca_cert = var.vault_agent.vault_ca_cert
+    extra_config = ""
+  }
+}
+
 module "data_volume_configs" {
-  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//data-volumes?ref=v0.14.0"
+  source = "git::https://github.com/Ferlab-Ste-Justine/terraform-cloudinit-templates.git//data-volumes?ref=v0.29.0"
   volumes = [{
     label         = "postgres_data"
     device        = "vdb"
@@ -199,6 +219,11 @@ locals {
       filename     = "fluent_bit.cfg"
       content_type = "text/cloud-config"
       content      = module.fluentbit_configs.configuration
+    }] : [],
+    var.vault_agent.enabled ? [{
+      filename     = "vault_agent.cfg"
+      content_type = "text/cloud-config"
+      content      = module.vault_agent_configs.configuration
     }] : [],
     var.data_volume_id != "" ? [{
       filename     = "data_volume.cfg"
