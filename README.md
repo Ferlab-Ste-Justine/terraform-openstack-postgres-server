@@ -1,8 +1,6 @@
 # About
 
-This is a terraform module that provisions a postgres server that is part of a patroni high availability cluster on openstack. The settings are configured for synchronous replication with the emphasis placed on data consistency and durability above availability when the two goals are at odds.
-
-Given a certificate authority, it will generate its server-side certificate and key to server traffic over tls.
+This is a terraform module that provisions a postgres server that is part of a patroni high availability cluster on openstack. Depending on the input values passed, replication can be either synchronous (strict or not) or asynchronous. See the patroni documentation for the tradeoffs between the replication modes.
 
 Given that it is the common denominator for all the clients we are using, only password authentication is supported for now. The module will take a password as an argument for its superuser account.
 
@@ -25,7 +23,7 @@ This module takes the following variables as input:
   - **params**: List of postgres parameters represented by **key** and **value** keys for each entry. Note that the master will set those values in etcd and it will be shared by all members. Given that which node will be elected the leader is random, it should be set the same in all members.
   - **replicator_password**: Password for the replicator user.
   - **superuser_password**: Password for the postgres superuser
-  - **ca_certificate**: CA certificate used to signed all server and client TLS certificates for postgres and patroni
+  - **ca_certificate**: The CA certificate that was used to sign all server and client TLS certificates for postgres and patroni
   - **server_certificate**: Server tls certificate used for both postgres and the patroni api.
   - **server_key**: Private server key used for both postgres and the patroni api.
 - **etcd**: Patroni etcd backend configuration. Note that the etcd server needs to have the grpc gateway enabled with username/password authentication. It has the following keys:
@@ -43,7 +41,12 @@ This module takes the following variables as input:
   - **master_start_timeout**: Amount of time (in seconds) a failing master has to recover before patroni demotes it as leader.
   - **master_stop_timeout**: Amount of time (in seconds) patroni will wait after a shutdown trigger before sending SIGKILL to the postgres server it manages.
   - **watchdog_safety_margin**: Safety margin before leader lock ttl expire where watchdown will force master shutdown to prevent split brain. See documentation for usager: https://patroni.readthedocs.io/en/latest/watchdog.html
-  - **synchronous_node_count**: Number of additional nodes a transaction commit should be writen to in addition to the master to report a success.
+  - **is_synchronous**: Boolean indicating whether synchronous synchronization should be used between the leader and the replicas.
+  - **synchronous_settings**: Settings if the synchronization is synchronous. It has the following keys:
+    - **strict**: Boolean indicating whether the synchronous synchronization is strict or not.
+    - **synchronous_node_count**: Number of additional nodes a transaction commit should be writen to in addition to the leader to report a success.
+  - **asynchronous_settings**: Settings if the synchronization is asynchronous. It has the following keys:
+    - **maximum_lag_on_failover**: Maximum WAL lag in bytes a replica is allowed to have in order to be considered for leadership when cluster leadership is lost.
   - **client_certificate**: Client certificate signed with the postgres CA that patroni will use to authentify itself to patroni endpoints of the cluster.
   - **client_key**: Client key used to sign the certificate
 - **chrony**: Optional chrony configuration for when you need a more fine-grained ntp setup on your vm. It is an object with the following fields:
@@ -81,6 +84,7 @@ This module takes the following variables as input:
       - **key**: Client private tls key to authentify with. To be used for certificate authentication.
       - **username**: Client's username. To be used for username/password authentication.
       - **password**: Client's password. To be used for username/password authentication.
+    - **vault_agent_secret_path**: Optional vault secret path for an optional vault agent to renew the etcd client credentials. The secret in vault is expected to have the **certificate** and **key** keys if certificate authentication is used or the **username** and **password** keys if password authentication is used.
   - **git**: Parameters to fetch fluent-bit configurations dynamically from an git repo. It has the following keys:
     - **repo**: Url of the git repository. It should have the ssh format.
     - **ref**: Git reference (usually branch) to checkout in the repository
@@ -89,4 +93,12 @@ This module takes the following variables as input:
     - **auth**: Authentication to the git server. It should have the following keys:
       - **client_ssh_key** Private client ssh key to authentication to the server.
       - **server_ssh_fingerprint**: Public ssh fingerprint of the server that will be used to authentify it.
+- **vault_agent**: Parameters for the optional vault agent that will be used to manage the dynamic secrets in the vm.
+  - **enabled**: If set to true, a vault agent service will be setup and will run in the vm.
+  - **auth_method**: Auth method the vault agent will use to authenticate with vault. Currently, only approle is supported.
+    - **config**: Configuration parameters for the auth method.
+      - **role_id**: Id of the app role to us.
+      - **secret_id**: Authentication secret to use the app role.
+  - **vault_address**: Endpoint to use to talk to vault.
+  - **vault_ca_cert**: CA certificate to use to validate vault's certificate.
 - **install_dependencies**: Whether cloud-init should install external dependencies (should be set to false if you already provide an image with the external dependencies built-in).
