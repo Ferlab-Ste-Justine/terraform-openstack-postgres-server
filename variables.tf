@@ -21,7 +21,7 @@ variable "image_source" {
   })
 
   validation {
-    condition     = var.image_source.image_id != "" || var.image_source.volume_id
+    condition     = var.image_source.image_id != "" || var.image_source.volume_id != ""
     error_message = "Either image_source.image_id or image_source.volume_id need to be defined."
   }
 }
