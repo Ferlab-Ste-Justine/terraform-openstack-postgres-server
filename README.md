@@ -41,6 +41,7 @@ This module takes the following variables as input:
   - **master_start_timeout**: Amount of time (in seconds) a failing master has to recover before patroni demotes it as leader.
   - **master_stop_timeout**: Amount of time (in seconds) patroni will wait after a shutdown trigger before sending SIGKILL to the postgres server it manages.
   - **watchdog_safety_margin**: Safety margin before leader lock ttl expire where watchdown will force master shutdown to prevent split brain. See documentation for usager: https://patroni.readthedocs.io/en/latest/watchdog.html
+  - **use_pg_rewind**: Whether to use pg_rewind to automatically recover from a divergent state with the leader. It requires that postgres has either **wal_log_hints** option or data checksums enabled. If **wal_log_hints** is missing from **postgres.params**, it will add that parameter with the value **on**. Note that if the patroni cluster is asynchronous, setting this argument to true may lead to some losses of unpropagated transactions on leader changes, but it is either that or having to manually reconcialiate the divergence with the previous leader which will remain out of the patroni cluster until the situation is resolved. 
   - **is_synchronous**: Boolean indicating whether synchronous synchronization should be used between the leader and the replicas.
   - **synchronous_settings**: Settings if the synchronization is synchronous. It has the following keys:
     - **strict**: Boolean indicating whether the synchronous synchronization is strict or not.

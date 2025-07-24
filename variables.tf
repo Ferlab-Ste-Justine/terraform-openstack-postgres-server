@@ -253,31 +253,32 @@ variable "patroni" {
   description = "Patroni configurations"
   sensitive   = true
   type = object({
-    scope = string,
-    namespace = string,
-    name = string,
-    ttl = number,
-    loop_wait = number,
-    retry_timeout = number,
-    master_start_timeout = number,
-    master_stop_timeout = number,
-    watchdog_safety_margin = number,
-    is_synchronous         = bool,
+    scope = string
+    namespace = string
+    name = string
+    ttl = number
+    loop_wait = number
+    retry_timeout = number
+    master_start_timeout = number
+    master_stop_timeout = number
+    watchdog_safety_margin = number
+    use_pg_rewind          = bool
+    is_synchronous         = bool
     synchronous_settings   = optional(object({
       strict = bool
       synchronous_node_count = number
     }), {
       strict = true
       synchronous_node_count = 1
-    }),
+    })
     asynchronous_settings  = optional(object({
       maximum_lag_on_failover = number
     }), {
       //1MB
       maximum_lag_on_failover = 1048576
-    }),
-    client_certificate = string,
-    client_key = string,
+    })
+    client_certificate = string
+    client_key = string
   })
 }
 
